@@ -11,14 +11,15 @@ import (
 var (
 	client   = flag.String("c", "", "URL for sending messages")
 	server   = flag.String("s", "", "URL for receiving messages")
-	clientId = flag.String("id", common.Title(), "Client ID")
+	clientId = flag.String("clientid", "", "Client ID")
 	topic    = flag.String("topic", common.Title(), "Topic")
-	username = flag.String("u", "", "Username")
-	password = flag.String("p", "", "Password")
-	timeout  = flag.Int("ti", 0, "timeout")
+	username = flag.String("username", "", "Username")
+	password = flag.String("password", "", "Password")
+	timeout  = flag.Int("timeout", 0, "timeout")
 	qos      = flag.Int("qos", QOS_AT_MOST_ONCE, "timeout")
-	text     = flag.String("t", "Hello world!", "Payload")
-	retained = flag.Bool("r", false, "Retained flag")
+	text     = flag.String("text", "Hello world!", "Payload")
+	retained = flag.Bool("retained", false, "Retained flag")
+	count    = flag.Int("count", 1, "count")
 
 	url string
 )
@@ -72,6 +73,10 @@ func waitOnToken(timeout int, token mqtt.Token) error {
 }
 
 func run() error {
+	flag.Visit(func(f *flag.Flag) {
+		common.Info("Flag %s: \t%s", f.Name, f.Value)
+	})
+
 	isServer := *server != ""
 
 	if isServer {
@@ -109,7 +114,7 @@ func run() error {
 		token := client.Subscribe(*topic, byte(*qos), func(client mqtt.Client, message mqtt.Message) {
 			common.Info("----------------------")
 			common.Info("Message received: %+v", message)
-			//common.Info("Message payload: %+v", string(message.Payload()))
+			common.Info("Message payload: %s", string(message.Payload()))
 		})
 
 		err := waitOnToken(*timeout, token)
@@ -122,17 +127,29 @@ func run() error {
 		return nil
 	}
 
-	token = client.Publish(*topic, byte(*qos), *retained, *text)
+	for i := 0; i < *count; i++ {
+		t := *text
+		if *count > 1 {
+			t = fmt.Sprintf(" %s: %s #%d", time.Now().Format(time.DateTime), *text, i)
+		}
 
-	err = waitOnToken(*timeout, token)
-	if common.Error(err) {
-		return err
+		common.Info("Send text: %s", t)
+
+		token = client.Publish(*topic, byte(*qos), *retained, t)
+
+		err = waitOnToken(*timeout, token)
+		if common.Error(err) {
+			return err
+		}
+
+		if *count > 1 {
+			time.Sleep(time.Second)
+		}
 	}
 
 	return nil
 }
 
 func main() {
-
-	common.Run([]string{"c|s"})
+	common.Run([]string{"c|s", "clientid"})
 }
