@@ -130,7 +130,7 @@ func run() error {
 	for i := 0; i < *count; i++ {
 		t := *text
 		if *count > 1 {
-			t = fmt.Sprintf(" %s: %s #%d", time.Now().Format(time.DateTime), *text, i)
+			t = fmt.Sprintf("%s: %s #%d", time.Now().Format(time.DateTime), *text, i)
 		}
 
 		common.Info("Send text: %s", t)
