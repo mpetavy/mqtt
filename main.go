@@ -12,7 +12,7 @@ var (
 	client   = flag.String("c", "", "URL for sending messages")
 	server   = flag.String("s", "", "URL for receiving messages")
 	clientId = flag.String("clientid", "", "Client ID")
-	topic    = flag.String("topic", common.Title(), "Topic")
+	topic    = flag.String("topic", "", "Topic")
 	username = flag.String("username", "", "Username")
 	password = flag.String("password", "", "Password")
 	timeout  = flag.Int("timeout", 0, "timeout")
@@ -113,8 +113,8 @@ func run() error {
 	if isServer {
 		token := client.Subscribe(*topic, byte(*qos), func(client mqtt.Client, message mqtt.Message) {
 			common.Info("----------------------")
-			common.Info("Message received: %+v", message)
 			common.Info("Message payload: %s", string(message.Payload()))
+			common.Info("Message internals: %+v", message)
 		})
 
 		err := waitOnToken(*timeout, token)
@@ -130,7 +130,7 @@ func run() error {
 	for i := 0; i < *count; i++ {
 		t := *text
 		if *count > 1 {
-			t = fmt.Sprintf("%s: %s #%d", time.Now().Format(time.DateTime), *text, i)
+			t = fmt.Sprintf("%s (count: #%d)", *text, i)
 		}
 
 		common.Info("Send text: %s", t)
@@ -151,5 +151,5 @@ func run() error {
 }
 
 func main() {
-	common.Run([]string{"c|s", "clientid"})
+	common.Run([]string{"c|s", "clientid", "topic"})
 }
