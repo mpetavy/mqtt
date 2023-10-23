@@ -121,8 +121,7 @@ func run() error {
 		token := client.Subscribe(*topic, byte(*qos), func(client mqtt.Client, message mqtt.Message) {
 			common.Info("---------------------------------------------------------------------")
 			common.Info("Message payload: %s", string(message.Payload()))
-			common.Info("")
-			common.Info("Message internals: %+v", message)
+			common.Debug("Message internals: %+v", message)
 		})
 
 		err := waitOnToken(*timeout, token)
