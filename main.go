@@ -5,23 +5,21 @@ import (
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/mpetavy/common"
+	"net/url"
 	"time"
 )
 
 var (
-	client   = flag.String("c", "", "URL for sending messages")
-	server   = flag.String("s", "", "URL for receiving messages")
-	clientId = flag.String("clientid", "", "Client ID")
-	topic    = flag.String("topic", "", "Topic")
-	username = flag.String("username", "", "Username")
-	password = flag.String("password", "", "Password")
-	timeout  = flag.Int("timeout", 0, "timeout")
-	qos      = flag.Int("qos", QOS_AT_MOST_ONCE, "timeout")
-	text     = flag.String("text", "Hello world!", "Payload")
-	retained = flag.Bool("retained", false, "Retained flag")
-	count    = flag.Int("count", 1, "count")
-
-	url string
+	serverurl = flag.String("url", "", "URL for sending messages")
+	clientId  = flag.String("clientid", "", "Client ID")
+	topic     = flag.String("topic", "", "Topic")
+	username  = flag.String("username", "", "Username")
+	password  = flag.String("password", "", "Password")
+	timeout   = flag.Int("timeout", 0, "timeout")
+	qos       = flag.Int("qos", QOS_AT_MOST_ONCE, "timeout")
+	text      = flag.String("text", "", "Payload")
+	retained  = flag.Bool("retained", false, "Retained flag")
+	count     = flag.Int("count", 1, "count")
 )
 
 const (
@@ -39,11 +37,11 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 }
 
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
-	common.Info("Connected to %s", url)
+	common.Info("Connected to %s", *serverurl)
 }
 
 var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err error) {
-	common.Warn("Connected lost to %s", url)
+	common.Warn("Connected lost to %s", *serverurl)
 }
 
 func waitOnToken(timeout int, token mqtt.Token) error {
@@ -77,16 +75,25 @@ func run() error {
 		common.Info("Flag %s: \t%s", f.Name, f.Value)
 	})
 
-	isServer := *server != ""
+	_, err := url.Parse(*serverurl)
+	if common.Error(err) {
+		return err
+	}
 
-	if isServer {
-		url = *server
+	isReceiver := *text == ""
+
+	if isReceiver {
+		common.Info("Receiver")
 	} else {
-		url = *client
+		common.Info("Sender")
+
+		if *text == "" {
+			return fmt.Errorf("flag 'text' not defined")
+		}
 	}
 
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker(url)
+	opts.AddBroker(*serverurl)
 	opts.SetClientID(*clientId)
 	if *username != "" {
 		opts.SetUsername(*username)
@@ -100,7 +107,7 @@ func run() error {
 
 	token := client.Connect()
 
-	err := waitOnToken(*timeout, token)
+	err = waitOnToken(*timeout, token)
 	if common.Error(err) {
 		return err
 	}
@@ -110,10 +117,11 @@ func run() error {
 		client.Disconnect(1000)
 	}()
 
-	if isServer {
+	if isReceiver {
 		token := client.Subscribe(*topic, byte(*qos), func(client mqtt.Client, message mqtt.Message) {
-			common.Info("----------------------")
+			common.Info("---------------------------------------------------------------------")
 			common.Info("Message payload: %s", string(message.Payload()))
+			common.Info("")
 			common.Info("Message internals: %+v", message)
 		})
 
@@ -151,5 +159,5 @@ func run() error {
 }
 
 func main() {
-	common.Run([]string{"c|s", "clientid", "topic"})
+	common.Run([]string{"url", "clientid", "topic"})
 }
