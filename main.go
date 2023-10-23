@@ -119,9 +119,8 @@ func run() error {
 
 	if isReceiver {
 		token := client.Subscribe(*topic, byte(*qos), func(client mqtt.Client, message mqtt.Message) {
-			common.Info("---------------------------------------------------------------------")
-			common.Info("Message payload: %s", string(message.Payload()))
-			common.Debug("Message internals: %+v", message)
+			common.Info("Received text: %s", string(message.Payload()))
+			common.Debug("Internals: %+v", message)
 		})
 
 		err := waitOnToken(*timeout, token)
