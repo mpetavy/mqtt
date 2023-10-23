@@ -3,6 +3,11 @@ module mqtt
 go 1.21.0
 
 require (
+	github.com/eclipse/paho.mqtt.golang v1.4.3
+	github.com/mpetavy/common v1.6.16
+)
+
+require (
 	cloud.google.com/go v0.110.2 // indirect
 	cloud.google.com/go/compute v1.19.2 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
@@ -12,7 +17,6 @@ require (
 	github.com/dlclark/regexp2 v1.9.0 // indirect
 	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f // indirect
 	github.com/dop251/goja_nodejs v0.0.0-20230322100729-2550c7b6c124 // indirect
-	github.com/eclipse/paho.mqtt.golang v1.4.3 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
@@ -39,7 +43,6 @@ require (
 	github.com/labstack/gommon v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.18 // indirect
-	github.com/mpetavy/common v1.6.15 // indirect
 	github.com/ompluscator/dynamic-struct v1.4.0 // indirect
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c // indirect
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b // indirect
