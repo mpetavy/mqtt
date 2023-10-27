@@ -128,7 +128,10 @@ func run() error {
 			return err
 		}
 
-		<-common.AppLifecycle().NewChannel()
+		appCh := common.AppLifecycle().NewChannel()
+		defer common.AppLifecycle().RemoveChannel(appCh)
+
+		<-appCh
 
 		return nil
 	}
