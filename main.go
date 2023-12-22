@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -28,8 +29,11 @@ const (
 	QOS_EXACTLY_ONCE  = 2
 )
 
+//go:embed go.mod
+var resources embed.FS
+
 func init() {
-	common.Init("mqtt", "", "", "", "2023", "mqtt", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, nil, run, 0)
+	common.Init("", "", "", "", "mqtt", "", "", "", &resources, nil, nil, run, 0)
 }
 
 var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {

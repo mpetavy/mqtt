@@ -4,7 +4,7 @@ go 1.21.0
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.3
-	github.com/mpetavy/common v1.6.33
+	github.com/mpetavy/common v1.6.36
 )
 
 require (
@@ -65,3 +65,5 @@ require (
 	google.golang.org/protobuf v1.30.0 // indirect
 	software.sslmate.com/src/go-pkcs12 v0.2.0 // indirect
 )
+
+//replace github.com/mpetavy/common => ../common
