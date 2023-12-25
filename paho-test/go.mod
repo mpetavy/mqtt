@@ -1,4 +1,4 @@
-module paho
+module github.com/mpetavy/paho
 
 go 1.21.3
 
