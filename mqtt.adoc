@@ -1,0 +1,77 @@
+= MQTT broker setup in bride mode
+
+== Decription
+
+This is a description of a setup of 2 MQTT brokers in bridge mode. +
+Bridge mode allows users to connect two or more Mosquitto brokers to share information with each other. +
+Choosen MQTT broker is the well known Eclipse Mosquitto MQTT broker https://mosquitto.org/
+
+== Requirements
+
+* Two MQTT broker
+* TLS enabled communication
+* Broker Authentication
+* Bi-directional communication
+
+== Comparison of MQQT brokers
+
+== Glossar
+
+https://mosquitto.org/man/mosquitto-8.html
+
+[cols="2,10"]
+|===
+
+|Enhanced authentication
+|Basic MQTT authentication uses username/password checks. Enhanced authentication allows different authentication schemes to be integrated into MQTT, and even those schemes with multiple step processes. Clients request a particular type of authentication and if the broker is configured for that scheme the authentication continues. Mosquitto supports enhanced authentication through plugins.
+
+|Error handling
+|Most MQTT packets now have the concept of a reason code which indicates success or failure, and what the failure was. Mosquitto provides full support for reason codes, but does not make use of the reason string feature which can be used to provide a human readable error string to explain the reason code.
+
+Flow control
+The number of "in flight" messages for QoS 1 and QoS 2 can be controlled by both the client and the broker.
+
+Request / response
+MQTT v5.0 adds a request/response pattern that allows a client to publish a message and instruct the subscribers of that message where to publish a response.
+
+Server redirection
+Server redirection is the concept of telling a client to connect to a different MQTT broker, either on CONNECT or with a broker initiated DISCONNECT. Mosquitto does not currently make use of this feature.
+
+Shared subscriptions
+When multiple clients subscribe to the same shared subscription, only one client out of the group will receive each message which allows for distributing work loads.
+
+
+|===
+
+
+[cols="1,1,1"]
+|===
+||Mosquitto|HiveMQ
+
+|Version 5
+|*
+|*
+
+|Version 3.11
+|*
+|*
+
+|Version 3.1
+|*
+|*
+
+|Server redirection
+|*
+|*
+
+|Shared subscription
+|*
+|*
+
+
+|===
+
+== Limitations
+
+* Windows 10+ and Windows Server 2019+ can only handle approximatly 8192 concurrent connections
+*
