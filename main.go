@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -19,35 +20,49 @@ const (
 	QOS_AT_MOST_ONCE  = 0
 	QOS_AT_LEAST_ONCE = 1
 	QOS_EXACTLY_ONCE  = 2
+
+	CMD_EXIT        = "exit"
+	CMD_INFO        = "info"
+	CMD_QOS         = "qos"
+	CMD_FILE        = "file"
+	CMD_TIMEOUT     = "timeout"
+	CMD_CLIENTID    = "clientid"
+	CMD_TOPIC       = "topic"
+	CMD_CONNECT     = "connect"
+	CMD_SUBSCRIBE   = "subscribe"
+	CMD_UNSUBSCRIBE = "unsubscribe"
+	CMD_DISCONNECT  = "disconnect"
+	CMD_PUBLISH     = "publish"
 )
 
 type Conn struct {
 	Broker        string   `json:"Broker"`
-	Username      string   `json:"Username"`
-	Password      string   `json:"Password"`
 	ClientId      string   `json:"Clientid"`
 	Topic         string   `json:"Topic"`
 	Subscriptions []string `json:"Subscriptions"`
 	Qos           int      `json:"Qos"`
+	Timeout       int      `json:"Timeout"`
 
 	client mqtt.Client
 }
 
 var (
-	host          = flag.String("url", "", "host IP of MQTT broker")
-	username      = flag.String("username", "", "Username")
-	password      = flag.String("password", "", "Password")
-	clientId      = flag.String("clientid", "", "Client ID")
-	topic         = flag.String("topic", "", "Topic")
-	subscriptions = flag.String("subscriptions", "", "Subscriptions")
-	timeout       = flag.Int("timeout", 0, "timeout")
-	qos           = flag.Int("qos", QOS_AT_MOST_ONCE, "timeout")
-	text          = flag.String("text", "", "Payload")
-	retained      = flag.Bool("retained", false, "Retained flag")
-	count         = flag.Int("count", 1, "count")
+	host     = flag.String("url", "", "host IP of MQTT broker")
+	username = flag.String("username", "", "Username")
+	password = flag.String("password", "", "Password")
+	clientId = flag.String("clientid", "", "Client ID")
+	topic    = flag.String("topic", "", "Topic")
+	timeout  = flag.Int("timeout", 0, "timeout")
+	qos      = flag.Int("qos", QOS_AT_MOST_ONCE, "timeout")
+	text     = flag.String("text", "", "Payload")
+	file     = flag.String("file", "", "File to execute")
+	retained = flag.Bool("retained", false, "Retained flag")
+	count    = flag.Int("count", 1, "count")
 
 	conns       = make(map[string]*Conn)
 	currentConn *Conn
+	inPrompt    bool
+	connected   chan struct{}
 )
 
 //go:embed go.mod
@@ -62,15 +77,20 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 }
 
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
-	common.Info("Connected!")
+	promptNewLine()
+	common.Info("-- [MQTT Event] Connected!")
+
+	close(connected)
 }
 
 var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err error) {
-	common.Warn("Connection lost!")
+	promptNewLine()
+	common.Info("-- [MQTT Event] Connection lost!")
 }
 
 var reconnectHandler mqtt.ReconnectHandler = func(client mqtt.Client, clientOptions *mqtt.ClientOptions) {
-	common.Warn("Reconnected!")
+	promptNewLine()
+	common.Info("-- [MQTT Event] Reconnected!")
 }
 
 func waitOnToken(timeout int, token mqtt.Token) error {
@@ -100,7 +120,7 @@ func waitOnToken(timeout int, token mqtt.Token) error {
 }
 
 func receive(client mqtt.Client, message mqtt.Message) {
-	common.Info("Received [%s]: %s", message.Topic(), string(message.Payload()))
+	prompt("Received [%s]: %s", message.Topic(), string(message.Payload()))
 	common.Debug("Internals: %+v", message)
 }
 
@@ -121,7 +141,7 @@ func defaults(cmds []string, args ...string) []string {
 func (conn *Conn) setClientId(clientId string) error {
 	err := isConnected(conn)
 	if common.Error(err) {
-		return nil
+		return err
 	}
 
 	conn.ClientId = clientId
@@ -132,7 +152,7 @@ func (conn *Conn) setClientId(clientId string) error {
 func (conn *Conn) setTopic(topic string) error {
 	err := isConnected(conn)
 	if common.Error(err) {
-		return nil
+		return err
 	}
 
 	conn.Topic = topic
@@ -143,7 +163,7 @@ func (conn *Conn) setTopic(topic string) error {
 func (conn *Conn) setQos(q string) error {
 	err := isConnected(conn)
 	if common.Error(err) {
-		return nil
+		return err
 	}
 
 	v, err := strconv.Atoi(q)
@@ -156,23 +176,39 @@ func (conn *Conn) setQos(q string) error {
 	return nil
 }
 
-func connect(broker string, username string, password string) (*Conn, error) {
+func (conn *Conn) setTimeout(q string) error {
+	err := isConnected(conn)
+	if common.Error(err) {
+		return err
+	}
+
+	v, err := strconv.Atoi(q)
+	if common.Error(err) {
+		return err
+	}
+
+	conn.Timeout = v
+
+	return nil
+}
+
+func connect(broker string, username string, password string) error {
 	conn, ok := conns[broker]
 	if !ok {
 		conn = &Conn{
 			Broker:        broker,
-			Username:      "",
-			Password:      "",
-			ClientId:      "",
+			ClientId:      *clientId,
+			Topic:         *topic,
 			Subscriptions: nil,
-			Qos:           QOS_AT_MOST_ONCE,
+			Qos:           *qos,
+			Timeout:       *timeout,
 			client:        nil,
 		}
 	}
 
 	u, err := url.Parse(broker)
 	if common.Error(err) {
-		return nil, err
+		return err
 	}
 
 	if u.Port() == "" {
@@ -199,15 +235,21 @@ func connect(broker string, username string, password string) (*Conn, error) {
 
 	conn.client = mqtt.NewClient(opts)
 
+	connected = make(chan struct{})
+
 	token := conn.client.Connect()
 	err = waitOnToken(*timeout, token)
 	if common.Error(err) {
-		return nil, err
+		return err
 	}
+
+	<-connected
 
 	conns[broker] = conn
 
-	return conn, nil
+	currentConn = conn
+
+	return nil
 }
 
 func isConnected(conn *Conn) error {
@@ -238,12 +280,12 @@ func (conn *Conn) String() string {
 func (conn *Conn) info() error {
 	err := isConnected(conn)
 	if common.Error(err) {
-		return nil
+		return err
 	}
 
 	ba, _ := json.MarshalIndent(conn, "", "    ")
 
-	common.Info(string(ba))
+	prompt(string(ba))
 
 	return nil
 }
@@ -251,7 +293,7 @@ func (conn *Conn) info() error {
 func (conn *Conn) subscribe(topic string) error {
 	err := isConnected(conn)
 	if common.Error(err) {
-		return nil
+		return err
 	}
 
 	if slices.Contains(conn.Subscriptions, topic) {
@@ -263,7 +305,7 @@ func (conn *Conn) subscribe(topic string) error {
 
 	token := conn.client.Subscribe(topic, byte(*qos), receive)
 
-	err = waitOnToken(*timeout, token)
+	err = waitOnToken(conn.Timeout, token)
 	if common.Error(err) {
 		return err
 	}
@@ -276,7 +318,7 @@ func (conn *Conn) subscribe(topic string) error {
 func (conn *Conn) unsubscribe(topic string) error {
 	err := isConnected(conn)
 	if common.Error(err) {
-		return nil
+		return err
 	}
 
 	p := slices.Index(conn.Subscriptions, topic)
@@ -289,7 +331,7 @@ func (conn *Conn) unsubscribe(topic string) error {
 
 	token := conn.client.Unsubscribe(topic)
 
-	err = waitOnToken(*timeout, token)
+	err = waitOnToken(conn.Timeout, token)
 	if common.Error(err) {
 		return err
 	}
@@ -302,13 +344,17 @@ func (conn *Conn) unsubscribe(topic string) error {
 func (conn *Conn) publish(text string, count int, retained bool) error {
 	err := isConnected(conn)
 	if common.Error(err) {
-		return nil
+		return err
+	}
+
+	if conn.Topic == "" {
+		return fmt.Errorf("undefined topic")
 	}
 
 	for i := 0; i < count; i++ {
 		token := conn.client.Publish(conn.Topic, byte(conn.Qos), retained, text)
 
-		err := waitOnToken(*timeout, token)
+		err := waitOnToken(conn.Timeout, token)
 		if common.Error(err) {
 			return err
 		}
@@ -317,33 +363,161 @@ func (conn *Conn) publish(text string, count int, retained bool) error {
 	return nil
 }
 
+func executeFile(filename string) error {
+	ba, err := os.ReadFile(filename)
+	if common.Error(err) {
+		return err
+	}
+
+	err = executeScript(ba)
+	if common.Error(err) {
+		return err
+	}
+
+	return err
+}
+
+func executeScript(script []byte) error {
+	scanner := bufio.NewScanner(bytes.NewReader(script))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		prompt("%s", line)
+
+		err := executeLine(line)
+		if common.Error(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func promptNewLine() {
+	if inPrompt {
+		fmt.Println()
+
+		inPrompt = false
+	}
+}
+
+func prompt(format string, args ...any) {
+	promptNewLine()
+
+	if format != "" {
+		fmt.Printf(format, args...)
+		fmt.Println()
+	} else {
+		fmt.Printf("> ")
+
+		inPrompt = true
+	}
+}
+
+func executeLine(cmdline string) error {
+	cmds := common.SplitCmdline(strings.TrimSpace(cmdline))
+
+	if len(cmds) == 0 {
+		return nil
+	}
+
+	switch cmds[0] {
+	case CMD_EXIT:
+		return &common.ErrExit{}
+	case CMD_INFO:
+		common.Error(currentConn.info())
+	case CMD_QOS:
+		args := defaults(cmds, strconv.Itoa(*qos))
+		common.Error(currentConn.setQos(args[0]))
+	case CMD_TIMEOUT:
+		args := defaults(cmds, strconv.Itoa(*timeout))
+		common.Error(currentConn.setTimeout(args[0]))
+	case CMD_CLIENTID:
+		args := defaults(cmds, "")
+		common.Error(currentConn.setClientId(args[0]))
+	case CMD_TOPIC:
+		args := defaults(cmds, "")
+		common.Error(currentConn.setTopic(args[0]))
+	case CMD_CONNECT:
+		args := defaults(cmds, "localhost", "", "")
+		common.Error(connect(args[0], args[1], args[2]))
+	case CMD_FILE:
+		args := defaults(cmds, "")
+		common.Error(executeFile(args[0]))
+	case CMD_SUBSCRIBE:
+		args := defaults(cmds, "")
+		common.Error(currentConn.subscribe(args[0]))
+	case CMD_UNSUBSCRIBE:
+		args := defaults(cmds, "")
+		common.Error(currentConn.unsubscribe(args[0]))
+	case CMD_DISCONNECT:
+		currentConn.disconnect()
+	case CMD_PUBLISH:
+		var args []string
+
+		switch len(cmds) {
+		case 2:
+			args = defaults(cmds, cmds[1], "1", "false")
+		case 3:
+			args = defaults(cmds, cmds[1], cmds[2], "false")
+		case 4:
+			args = defaults(cmds, cmds[1], cmds[2], cmds[3])
+		default:
+			return fmt.Errorf("invalid command: %s", cmds[0])
+		}
+
+		c, err := strconv.Atoi(args[1])
+		if common.Error(err) {
+			return err
+		}
+
+		b := common.ToBool(args[2])
+
+		common.Error(currentConn.publish(args[0], c, b))
+	default:
+		common.Error(fmt.Errorf("unknown command: %s", cmds[0]))
+	}
+
+	return nil
+}
+
 func run() error {
 	if *host != "" {
-		var err error
+		sb := bytes.Buffer{}
 
-		currentConn, err = connect(*host, *username, *password)
-		if !common.Error(err) {
-			if *subscriptions != "" {
-				for _, subscription := range common.Split(*subscriptions, ";") {
-					common.Error(currentConn.subscribe(subscription))
-				}
-			}
+		sb.WriteString(fmt.Sprintf("connect %s", *host))
+		if *username != "" {
+			sb.WriteString(fmt.Sprintf("%s %s", *username, *password))
+		}
+		sb.WriteString("\n")
 
-			if *clientId != "" {
-				common.Error(currentConn.setClientId(*clientId))
-			}
+		if *clientId != "" {
+			sb.WriteString(fmt.Sprintf("clientid %s\n", *clientId))
+		}
 
-			if *topic != "" {
-				common.Error(currentConn.setTopic(*topic))
-			}
+		if *topic != "" {
+			sb.WriteString(fmt.Sprintf("topic %s\n", *topic))
+		}
 
-			if *qos != 0 {
-				common.Error(currentConn.setQos(strconv.Itoa(*qos)))
-			}
+		if *qos != 0 {
+			sb.WriteString(fmt.Sprintf("qos %d\n", *qos))
+		}
 
-			if *text != "" {
-				currentConn.publish(*text, *count, *retained)
-			}
+		if *timeout != 0 {
+			sb.WriteString(fmt.Sprintf("timeout %d\n", *timeout))
+		}
+
+		if *text != "" {
+			sb.WriteString(fmt.Sprintf("publish %s %d %v\n", *text, *count, *retained))
+		}
+
+		common.Error(executeScript(sb.Bytes()))
+	}
+
+	if *file != "" {
+		err := executeFile(*file)
+		if common.Error(err) {
+			return err
 		}
 	}
 
@@ -354,75 +528,24 @@ func run() error {
 	}()
 
 	for {
-		fmt.Printf("> ")
+		prompt("")
 
 		reader := bufio.NewReader(os.Stdin)
 		cmdline, err := reader.ReadString('\n')
 		common.DebugError(err)
 
-		cmds := common.SplitCmdline(strings.TrimSpace(cmdline))
+		inPrompt = false
 
-		if len(cmds) == 0 {
-			continue
-		}
-
-		switch cmds[0] {
-		case "exit":
+		err = executeLine(cmdline)
+		if common.IsErrExit(err) {
 			break
-		case "info":
-			common.Error(currentConn.info())
-		case "qos":
-			args := defaults(cmds, strconv.Itoa(QOS_AT_MOST_ONCE))
-			common.Error(currentConn.setQos(args[0]))
-		case "clientid":
-			args := defaults(cmds, "")
-			common.Error(currentConn.setClientId(args[0]))
-		case "topic":
-			args := defaults(cmds, "")
-			common.Error(currentConn.setClientId(args[0]))
-		case "connect":
-			args := defaults(cmds, "localhost", "", "")
-			connect(args[0], args[1], args[2])
-		case "subscribe":
-			args := defaults(cmds, "")
-			common.Error(currentConn.subscribe(args[0]))
-		case "unsubscribe":
-			args := defaults(cmds, "")
-			common.Error(currentConn.unsubscribe(args[0]))
-		case "disconnect":
-			currentConn.disconnect()
-		case "publish":
-			var args []string
-
-			switch len(cmds) {
-			case 2:
-				args = defaults(cmds, cmds[1], "1", "false")
-			case 3:
-				args = defaults(cmds, cmds[1], cmds[2], "false")
-			case 4:
-				args = defaults(cmds, cmds[1], cmds[2], cmds[3])
-			default:
-				common.Error(fmt.Errorf("invalid command: %s", cmds[0]))
-
-				continue
-			}
-
-			c, err := strconv.Atoi(args[1])
-			if common.Error(err) {
-				continue
-			}
-
-			b := common.ToBool(args[2])
-
-			currentConn.publish(args[0], c, b)
-		default:
-			common.Error(fmt.Errorf("unknown command: %s", cmds[0]))
 		}
+		common.Error(err)
 	}
 
 	return nil
 }
 
 func main() {
-	common.Run([]string{"url", "clientid", "topic"})
+	common.Run(nil)
 }

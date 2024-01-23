@@ -1,0 +1,4 @@
+connect localhost
+clientid sender
+topic mqtt
+publish "Hello world!" 5
