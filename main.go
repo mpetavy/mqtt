@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/google/uuid"
 	"github.com/mpetavy/common"
 	"net/url"
 	"os"
@@ -23,11 +24,13 @@ const (
 
 	CMD_EXIT        = "exit"
 	CMD_INFO        = "info"
+	CMD_INFOS       = "infos"
 	CMD_QOS         = "qos"
 	CMD_FILE        = "file"
 	CMD_TIMEOUT     = "timeout"
 	CMD_CLIENTID    = "clientid"
 	CMD_TOPIC       = "topic"
+	CMD_INSPECT     = "inspect"
 	CMD_CONNECT     = "connect"
 	CMD_SUBSCRIBE   = "subscribe"
 	CMD_UNSUBSCRIBE = "unsubscribe"
@@ -47,22 +50,24 @@ type Conn struct {
 }
 
 var (
-	host     = flag.String("url", "", "host IP of MQTT broker")
-	username = flag.String("username", "", "Username")
-	password = flag.String("password", "", "Password")
-	clientId = flag.String("clientid", "", "Client ID")
-	topic    = flag.String("topic", "", "Topic")
-	timeout  = flag.Int("timeout", 0, "timeout")
-	qos      = flag.Int("qos", QOS_AT_MOST_ONCE, "timeout")
-	text     = flag.String("text", "", "Payload")
-	file     = flag.String("file", "", "File to execute")
-	retained = flag.Bool("retained", false, "Retained flag")
-	count    = flag.Int("count", 1, "count")
+	host      = flag.String(CMD_CONNECT, "", "host IP of MQTT broker")
+	username  = flag.String("username", "", "Username")
+	password  = flag.String("password", "", "Password")
+	clientId  = flag.String(CMD_CLIENTID, uuid.New().String(), "Client ID")
+	topic     = flag.String(CMD_TOPIC, "", "Topic")
+	subscribe = flag.String(CMD_SUBSCRIBE, "", "Subscriptions")
+	timeout   = flag.Int(CMD_TIMEOUT, 0, "timeout")
+	qos       = flag.Int(CMD_QOS, QOS_AT_MOST_ONCE, "timeout")
+	publish   = flag.String(CMD_PUBLISH, "", "Payload")
+	file      = flag.String(CMD_FILE, "", "File to execute")
+	retained  = flag.Bool("retained", false, "Retained flag")
+	count     = flag.Int("count", 1, "count")
 
 	conns       = make(map[string]*Conn)
 	currentConn *Conn
 	inPrompt    bool
 	connected   chan struct{}
+	lastMsg     mqtt.Message
 )
 
 //go:embed go.mod
@@ -72,25 +77,45 @@ func init() {
 	common.Init("", "", "", "", "mqtt", "", "", "", &resources, nil, nil, run, 0)
 }
 
-var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("Topic: %s | %s\n", msg.Topic(), msg.Payload())
+var unsubscribedMessageHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+	prompt("-- [MQTT Event] Unsubscribed message received. Topic: %s | %s", msg.Topic(), msg.Payload())
+
+	lastMsg = msg
 }
 
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
-	promptNewLine()
-	common.Info("-- [MQTT Event] Connected!")
+	prompt("-- [MQTT Event] Connected!")
 
 	close(connected)
 }
 
 var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err error) {
-	promptNewLine()
-	common.Info("-- [MQTT Event] Connection lost!")
+	prompt("-- [MQTT Event] Connection lost!")
 }
 
 var reconnectHandler mqtt.ReconnectHandler = func(client mqtt.Client, clientOptions *mqtt.ClientOptions) {
-	promptNewLine()
-	common.Info("-- [MQTT Event] Reconnected!")
+	prompt("-- [MQTT Event] Reconnected!")
+}
+
+func receive(client mqtt.Client, msg mqtt.Message) {
+	prompt("-- [MQTT Event] Received [%s]: %s", msg.Topic(), string(msg.Payload()))
+
+	lastMsg = msg
+}
+
+func inspect() error {
+	if lastMsg == nil {
+		return nil
+	}
+
+	ba, err := json.MarshalIndent(lastMsg, "", "    ")
+	if common.Error(err) {
+		return err
+	}
+
+	prompt("%s", string(ba))
+
+	return nil
 }
 
 func waitOnToken(timeout int, token mqtt.Token) error {
@@ -117,11 +142,6 @@ func waitOnToken(timeout int, token mqtt.Token) error {
 	}
 
 	return nil
-}
-
-func receive(client mqtt.Client, message mqtt.Message) {
-	prompt("Received [%s]: %s", message.Topic(), string(message.Payload()))
-	common.Debug("Internals: %+v", message)
 }
 
 func defaults(cmds []string, args ...string) []string {
@@ -228,7 +248,7 @@ func connect(broker string, username string, password string) error {
 		opts.SetUsername(username)
 		opts.SetPassword(password)
 	}
-	opts.SetDefaultPublishHandler(messagePubHandler)
+	opts.SetDefaultPublishHandler(unsubscribedMessageHandler)
 	opts.OnConnect = connectHandler
 	opts.OnConnectionLost = connectLostHandler
 	opts.OnReconnecting = reconnectHandler
@@ -284,6 +304,14 @@ func (conn *Conn) info() error {
 	}
 
 	ba, _ := json.MarshalIndent(conn, "", "    ")
+
+	prompt(string(ba))
+
+	return nil
+}
+
+func (conn *Conn) infos() error {
+	ba, _ := json.MarshalIndent(conns, "", "    ")
 
 	prompt(string(ba))
 
@@ -352,7 +380,12 @@ func (conn *Conn) publish(text string, count int, retained bool) error {
 	}
 
 	for i := 0; i < count; i++ {
-		token := conn.client.Publish(conn.Topic, byte(conn.Qos), retained, text)
+		msg := text
+		if count > 1 {
+			msg = fmt.Sprintf("%s [%d]", text, i)
+		}
+
+		token := conn.client.Publish(conn.Topic, byte(conn.Qos), retained, msg)
 
 		err := waitOnToken(conn.Timeout, token)
 		if common.Error(err) {
@@ -426,6 +459,8 @@ func executeLine(cmdline string) error {
 		return &common.ErrExit{}
 	case CMD_INFO:
 		common.Error(currentConn.info())
+	case CMD_INFOS:
+		common.Error(currentConn.infos())
 	case CMD_QOS:
 		args := defaults(cmds, strconv.Itoa(*qos))
 		common.Error(currentConn.setQos(args[0]))
@@ -438,6 +473,8 @@ func executeLine(cmdline string) error {
 	case CMD_TOPIC:
 		args := defaults(cmds, "")
 		common.Error(currentConn.setTopic(args[0]))
+	case CMD_INSPECT:
+		common.Error(inspect())
 	case CMD_CONNECT:
 		args := defaults(cmds, "localhost", "", "")
 		common.Error(connect(args[0], args[1], args[2]))
@@ -485,30 +522,34 @@ func run() error {
 	if *host != "" {
 		sb := bytes.Buffer{}
 
-		sb.WriteString(fmt.Sprintf("connect %s", *host))
+		sb.WriteString(fmt.Sprintf("%s %s", CMD_CONNECT, *host))
 		if *username != "" {
 			sb.WriteString(fmt.Sprintf("%s %s", *username, *password))
 		}
 		sb.WriteString("\n")
 
 		if *clientId != "" {
-			sb.WriteString(fmt.Sprintf("clientid %s\n", *clientId))
+			sb.WriteString(fmt.Sprintf("%s %s\n", CMD_CLIENTID, *clientId))
 		}
 
 		if *topic != "" {
-			sb.WriteString(fmt.Sprintf("topic %s\n", *topic))
+			sb.WriteString(fmt.Sprintf("%s %s\n", CMD_TOPIC, *topic))
+		}
+
+		if *subscribe != "" {
+			sb.WriteString(fmt.Sprintf("%s %s\n", CMD_SUBSCRIBE, *subscribe))
 		}
 
 		if *qos != 0 {
-			sb.WriteString(fmt.Sprintf("qos %d\n", *qos))
+			sb.WriteString(fmt.Sprintf("%s %d\n", CMD_QOS, *qos))
 		}
 
 		if *timeout != 0 {
-			sb.WriteString(fmt.Sprintf("timeout %d\n", *timeout))
+			sb.WriteString(fmt.Sprintf("%s %d\n", CMD_TIMEOUT, *timeout))
 		}
 
-		if *text != "" {
-			sb.WriteString(fmt.Sprintf("publish %s %d %v\n", *text, *count, *retained))
+		if *publish != "" {
+			sb.WriteString(fmt.Sprintf("%s '%s' %d %v\n", CMD_PUBLISH, *publish, *count, *retained))
 		}
 
 		common.Error(executeScript(sb.Bytes()))

@@ -1,1 +1,1 @@
-go run . -url "tcp://localhost:1883" -topic mqtt -text "Hello world!" -clientid sender -count 5
+go run . -connect "tcp://localhost:1883" -clientid sender -topic mqtt -publish "Hello world!" -count 5

@@ -13,8 +13,6 @@ Choosen MQTT broker is the well known Eclipse Mosquitto MQTT broker https://mosq
 * Broker Authentication
 * Bi-directional communication
 
-== Comparison of MQQT brokers
-
 == Glossar
 
 https://mosquitto.org/man/mosquitto-8.html
@@ -39,10 +37,19 @@ Server redirection is the concept of telling a client to connect to a different 
 
 Shared subscriptions
 When multiple clients subscribe to the same shared subscription, only one client out of the group will receive each message which allows for distributing work loads.
-
-
 |===
 
+== Basic MQTT configuration
+
+    listener 1883
+    allow_anonymous true
+
+== Bridge MQTT configuration
+
+    listener 1883
+    allow_anonymous true
+
+== Comparison of MQQT brokers
 
 [cols="1,1,1"]
 |===
@@ -68,6 +75,15 @@ When multiple clients subscribe to the same shared subscription, only one client
 |*
 |*
 
+|ANONYMOUS Authentication
+|*
+|*
+
+|Custom Authentication
+|*
+|*
+|https://mosquitto.org/documentation/authentication-methods/
+|https://mosquitto.org/documentation/authentication-methods/
 
 |===
 

@@ -1,0 +1,62 @@
+services:
+  broker:
+    image: eclipse-mosquitto
+    ports:
+      - "1893:1883"
+    volumes:
+      - ./broker.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - broker-network
+
+  bridge:
+    image: eclipse-mosquitto
+    ports:
+      - "1884:1884"
+    volumes:
+      - ./bridge.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - bridge-network
+
+networks:
+  bridge-network: {}
+  broker-network: {}
+
+
+#services:
+#  mqtt-bridge:
+#    image: eclipse-mosquitto
+#    ports:
+#      - "1883:1884"
+#    networks:
+#      - front-tier
+#      - back-tier
+#    configs:
+#      - httpd-config
+#    secrets:
+#      - server-certificate
+#
+#  backend:
+#    image: example/database
+#    volumes:
+#      - db-data:/etc/data
+#    networks:
+#      - back-tier
+#
+#volumes:
+#  db-data:
+#    driver: flocker
+#    driver_opts:
+#      size: "10GiB"
+#
+#configs:
+#  httpd-config:
+#    external: true
+#
+#secrets:
+#  server-certificate:
+#    external: true
+#
+#networks:
+#  # The presence of these objects is sufficient to define them
+#  front-tier: {}
+#  back-tier: {}
