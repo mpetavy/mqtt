@@ -1,3 +1,3 @@
-@echo off
+#!/bin/sh
 
 docker compose rm -fsv

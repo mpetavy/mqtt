@@ -1,4 +1,4 @@
-@echo off
+#!/bin/sh
 
-call stop-bridge.bat
+/bin/sh stop-bridge.sh
 docker compose up -d --force-recreate
