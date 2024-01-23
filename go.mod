@@ -4,6 +4,7 @@ go 1.21.0
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.3
+	github.com/google/uuid v1.3.0
 	github.com/mpetavy/common v1.6.43
 )
 
@@ -26,7 +27,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/pprof v0.0.0-20230509042627-b1315fad0c5a // indirect
 	github.com/google/s2a-go v0.1.3 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect

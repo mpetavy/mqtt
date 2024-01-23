@@ -1,3 +1,5 @@
+// https://github.com/mutablelogic/go-mosquitto
+
 = MQTT broker setup in bride mode
 
 == Decription
@@ -13,6 +15,27 @@ Choosen MQTT broker is the well known Eclipse Mosquitto MQTT broker https://mosq
 * Broker Authentication
 * Bi-directional communication
 
+== MQTT broker
+
+https://mqtt.org/software/
+
+[cols="2,10"]
+|===
+
+|Eclipse Mosquitto|https://mosquitto.org/
+|EMQX|https://www.emqx.com/en/products/emqx
+|===
+
+
+== Eclipse Mosquitto
+
+[cols="2,10"]
+|===
+
+|Reread configuration|kill -1 <pid>
+|===
+
+
 == Glossar
 
 https://mosquitto.org/man/mosquitto-8.html
@@ -26,17 +49,17 @@ https://mosquitto.org/man/mosquitto-8.html
 |Error handling
 |Most MQTT packets now have the concept of a reason code which indicates success or failure, and what the failure was. Mosquitto provides full support for reason codes, but does not make use of the reason string feature which can be used to provide a human readable error string to explain the reason code.
 
-Flow control
-The number of "in flight" messages for QoS 1 and QoS 2 can be controlled by both the client and the broker.
+|Flow control
+|The number of "in flight" messages for QoS 1 and QoS 2 can be controlled by both the client and the broker.
 
-Request / response
-MQTT v5.0 adds a request/response pattern that allows a client to publish a message and instruct the subscribers of that message where to publish a response.
+|Request / response
+|MQTT v5.0 adds a request/response pattern that allows a client to publish a message and instruct the subscribers of that message where to publish a response.
 
-Server redirection
-Server redirection is the concept of telling a client to connect to a different MQTT broker, either on CONNECT or with a broker initiated DISCONNECT. Mosquitto does not currently make use of this feature.
+|Server redirection
+|Server redirection is the concept of telling a client to connect to a different MQTT broker, either on CONNECT or with a broker initiated DISCONNECT. Mosquitto does not currently make use of this feature.
 
-Shared subscriptions
-When multiple clients subscribe to the same shared subscription, only one client out of the group will receive each message which allows for distributing work loads.
+|Shared subscriptions
+|When multiple clients subscribe to the same shared subscription, only one client out of the group will receive each message which allows for distributing work loads.
 |===
 
 == Basic MQTT configuration
