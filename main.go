@@ -86,7 +86,9 @@ var unsubscribedMessageHandler mqtt.MessageHandler = func(client mqtt.Client, ms
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	prompt("-- [MQTT Event] Connected!")
 
-	close(connected)
+	if connected != nil {
+		close(connected)
+	}
 }
 
 var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err error) {
@@ -264,6 +266,8 @@ func connect(broker string, username string, password string) error {
 	}
 
 	<-connected
+
+	connected = nil
 
 	conns[broker] = conn
 
