@@ -56,7 +56,7 @@ var (
 	clientId  = flag.String(CMD_CLIENTID, uuid.New().String(), "Client ID")
 	topic     = flag.String(CMD_TOPIC, "", "Topic")
 	subscribe = flag.String(CMD_SUBSCRIBE, "", "Subscriptions")
-	timeout   = flag.Int(CMD_TIMEOUT, 0, "timeout")
+	timeout   = flag.Int(CMD_TIMEOUT, 3000, "timeout")
 	qos       = flag.Int(CMD_QOS, QOS_AT_MOST_ONCE, "timeout")
 	publish   = flag.String(CMD_PUBLISH, "", "Payload")
 	file      = flag.String(CMD_FILE, "", "File to execute")
