@@ -29,7 +29,6 @@ const (
 	CMD_FILE        = "file"
 	CMD_TIMEOUT     = "timeout"
 	CMD_CLIENTID    = "clientid"
-	CMD_TOPIC       = "topic"
 	CMD_INSPECT     = "inspect"
 	CMD_CONNECT     = "connect"
 	CMD_SUBSCRIBE   = "subscribe"
@@ -41,7 +40,6 @@ const (
 type Conn struct {
 	Broker        string   `json:"Broker"`
 	ClientId      string   `json:"Clientid"`
-	Topic         string   `json:"Topic"`
 	Subscriptions []string `json:"Subscriptions"`
 	Qos           int      `json:"Qos"`
 	Timeout       int      `json:"Timeout"`
@@ -54,7 +52,7 @@ var (
 	username  = flag.String("username", "", "Username")
 	password  = flag.String("password", "", "Password")
 	clientId  = flag.String(CMD_CLIENTID, uuid.New().String(), "Client ID")
-	topic     = flag.String(CMD_TOPIC, "", "Topic")
+	topic     = flag.String("topic", "", "Topic")
 	subscribe = flag.String(CMD_SUBSCRIBE, "", "Subscriptions")
 	timeout   = flag.Int(CMD_TIMEOUT, 3000, "timeout")
 	qos       = flag.Int(CMD_QOS, QOS_AT_MOST_ONCE, "timeout")
@@ -171,17 +169,6 @@ func (conn *Conn) setClientId(clientId string) error {
 	return nil
 }
 
-func (conn *Conn) setTopic(topic string) error {
-	err := isConnected(conn)
-	if common.Error(err) {
-		return err
-	}
-
-	conn.Topic = topic
-
-	return nil
-}
-
 func (conn *Conn) setQos(q string) error {
 	err := isConnected(conn)
 	if common.Error(err) {
@@ -220,7 +207,6 @@ func connect(broker string, username string, password string) error {
 		conn = &Conn{
 			Broker:        broker,
 			ClientId:      *clientId,
-			Topic:         *topic,
 			Subscriptions: nil,
 			Qos:           *qos,
 			Timeout:       *timeout,
@@ -373,23 +359,38 @@ func (conn *Conn) unsubscribe(topic string) error {
 	return nil
 }
 
-func (conn *Conn) publish(text string, count int, retained bool) error {
+func (conn *Conn) publish(topic string, payload string, count int, retained bool) error {
 	err := isConnected(conn)
 	if common.Error(err) {
 		return err
 	}
 
-	if conn.Topic == "" {
+	if topic == "" {
 		return fmt.Errorf("undefined topic")
 	}
 
-	for i := 0; i < count; i++ {
-		msg := text
-		if count > 1 {
-			msg = fmt.Sprintf("%s [%d]", text, i)
+	if payload == "" {
+		return fmt.Errorf("undefined payload")
+	}
+
+	isFileContent := strings.HasPrefix(payload, "@")
+	if isFileContent {
+		common.Info("read file: %s", payload[1:])
+		ba, err := os.ReadFile(payload[1:])
+		if common.Error(err) {
+			return err
 		}
 
-		token := conn.client.Publish(conn.Topic, byte(conn.Qos), retained, msg)
+		payload = string(ba)
+	}
+
+	for i := 0; i < count; i++ {
+		msg := payload
+		if !isFileContent && count > 1 {
+			msg = fmt.Sprintf("%s [%d]", payload, i)
+		}
+
+		token := conn.client.Publish(topic, byte(conn.Qos), retained, msg)
 
 		err := waitOnToken(conn.Timeout, token)
 		if common.Error(err) {
@@ -474,9 +475,6 @@ func executeLine(cmdline string) error {
 	case CMD_CLIENTID:
 		args := defaults(cmds, "")
 		common.Error(currentConn.setClientId(args[0]))
-	case CMD_TOPIC:
-		args := defaults(cmds, "")
-		common.Error(currentConn.setTopic(args[0]))
 	case CMD_INSPECT:
 		common.Error(inspect())
 	case CMD_CONNECT:
@@ -497,24 +495,24 @@ func executeLine(cmdline string) error {
 		var args []string
 
 		switch len(cmds) {
-		case 2:
-			args = defaults(cmds, cmds[1], "1", "false")
 		case 3:
-			args = defaults(cmds, cmds[1], cmds[2], "false")
+			args = defaults(cmds, cmds[1], cmds[2], "1", "false")
 		case 4:
-			args = defaults(cmds, cmds[1], cmds[2], cmds[3])
+			args = defaults(cmds, cmds[1], cmds[2], cmds[3], "false")
+		case 5:
+			args = defaults(cmds, cmds[1], cmds[2], cmds[3], cmds[4])
 		default:
 			return fmt.Errorf("invalid command: %s", cmds[0])
 		}
 
-		c, err := strconv.Atoi(args[1])
+		c, err := strconv.Atoi(args[2])
 		if common.Error(err) {
 			return err
 		}
 
-		b := common.ToBool(args[2])
+		b := common.ToBool(args[3])
 
-		common.Error(currentConn.publish(args[0], c, b))
+		common.Error(currentConn.publish(args[0], args[1], c, b))
 	default:
 		common.Error(fmt.Errorf("unknown command: %s", cmds[0]))
 	}
@@ -542,10 +540,6 @@ func run() error {
 			sb.WriteString(fmt.Sprintf("%s %s\n", CMD_CLIENTID, *clientId))
 		}
 
-		if *topic != "" {
-			sb.WriteString(fmt.Sprintf("%s %s\n", CMD_TOPIC, *topic))
-		}
-
 		if *subscribe != "" {
 			sb.WriteString(fmt.Sprintf("%s %s\n", CMD_SUBSCRIBE, *subscribe))
 		}
@@ -559,7 +553,7 @@ func run() error {
 		}
 
 		if *publish != "" {
-			sb.WriteString(fmt.Sprintf("%s '%s' %d %v\n", CMD_PUBLISH, *publish, *count, *retained))
+			sb.WriteString(fmt.Sprintf("%s %s '%s' %d %v\n", CMD_PUBLISH, *topic, *publish, *count, *retained))
 		}
 
 		common.Error(executeScript(sb.Bytes()))
