@@ -523,6 +523,12 @@ func executeLine(cmdline string) error {
 }
 
 func run() error {
+	flag.Visit(func(f *flag.Flag) {
+		common.Info("Flag %s: \t%s", f.Name, f.Value)
+	})
+
+	common.Info("")
+
 	if *host != "" {
 		sb := bytes.Buffer{}
 

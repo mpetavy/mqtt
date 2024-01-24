@@ -4,23 +4,16 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - ./broker.conf:/mosquitto/config/mosquitto.conf
-    networks:
-      - broker-network
+      - ./broker:/mosquitto/config
+    restart: unless-stopped
 
   bridge:
     image: eclipse-mosquitto
     ports:
       - "1884:1883"
     volumes:
-      - ./bridge.conf:/mosquitto/config/mosquitto.conf
-    networks:
-      - bridge-network
-
-networks:
-  bridge-network: {}
-  broker-network: {}
-
+      - ./bridge:/mosquitto/config
+    restart: unless-stopped
 
 #services:
 #  mqtt-bridge:
