@@ -6,6 +6,7 @@ services:
     volumes:
       - ./broker:/mosquitto/config
     restart: unless-stopped
+    user: 1000:1000
 
   bridge:
     image: eclipse-mosquitto
@@ -14,6 +15,7 @@ services:
     volumes:
       - ./bridge:/mosquitto/config
     restart: unless-stopped
+    user: 1000:1000
 
 #services:
 #  mqtt-bridge:
