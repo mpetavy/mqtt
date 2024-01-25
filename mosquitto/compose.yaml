@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     user: 1000:1000
     secrets:
-      - broker-passwd
+       - broker-passwd
 
   broker2883:
     image: eclipse-mosquitto
@@ -32,7 +32,7 @@ services:
     secrets:
       - broker-passwd
 
-  bridge1884:
+  bridge:
     image: eclipse-mosquitto
     ports:
       - "1884:1883"
@@ -46,37 +46,13 @@ services:
       broker1883:
         condition: service_started
         restart: true
-
-  bridge2884:
-    image: eclipse-mosquitto
-    ports:
-      - "2884:1883"
-    volumes:
-      - ./bridge:/mosquitto/config
-    restart: unless-stopped
-    user: 1000:1000
-    secrets:
-      - bridge-passwd
-    depends_on:
       broker2883:
         condition: service_started
         restart: true
-
-  bridge3884:
-    image: eclipse-mosquitto
-    ports:
-      - "3884:1883"
-    volumes:
-      - ./bridge:/mosquitto/config
-    restart: unless-stopped
-    user: 1000:1000
-    secrets:
-      - bridge-passwd
-    depends_on:
       broker3883:
         condition: service_started
         restart: true
-
+  
 secrets:
   broker-passwd:
     file: broker/broker-passwd
