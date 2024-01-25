@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   broker1883:
     image: eclipse-mosquitto
@@ -52,7 +54,7 @@ services:
       broker3883:
         condition: service_started
         restart: true
-  
+
 secrets:
   broker-passwd:
     file: broker/broker-passwd
