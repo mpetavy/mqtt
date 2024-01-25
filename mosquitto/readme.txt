@@ -14,3 +14,7 @@ docker compose up -d --force-recreate --scale bridge=3
 
 mosquitto_pub -h localhost -p 1884 -t mqtt -m Hallo
 mosquitto_sub -h localhost -t from-bridge/mqtt
+
+mosquitto_pub -h localhost -p 1884 -t mqtt -m test -u bridgeuser -P bridgepwd
+
+mosquitto_passwd -c passwd bridgeuser
