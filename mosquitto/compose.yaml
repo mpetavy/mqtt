@@ -1,5 +1,5 @@
 services:
-  broker:
+  broker1883:
     image: eclipse-mosquitto
     ports:
       - "1883:1883"
@@ -8,7 +8,25 @@ services:
     restart: unless-stopped
     user: 1000:1000
 
-  bridge:
+  broker2883:
+    image: eclipse-mosquitto
+    ports:
+      - "2883:1883"
+    volumes:
+      - ./broker:/mosquitto/config
+    restart: unless-stopped
+    user: 1000:1000
+
+  broker3883:
+    image: eclipse-mosquitto
+    ports:
+      - "3883:1883"
+    volumes:
+      - ./broker:/mosquitto/config
+    restart: unless-stopped
+    user: 1000:1000
+
+  bridge1884:
     image: eclipse-mosquitto
     ports:
       - "1884:1883"
@@ -16,6 +34,50 @@ services:
       - ./bridge:/mosquitto/config
     restart: unless-stopped
     user: 1000:1000
+    depends_on:
+      broker1883:
+        condition: service_started
+        restart: true
+
+  bridge2884:
+    image: eclipse-mosquitto
+    ports:
+      - "2884:1883"
+    volumes:
+      - ./bridge:/mosquitto/config
+    restart: unless-stopped
+    user: 1000:1000
+    depends_on:
+      broker2883:
+        condition: service_started
+        restart: true
+
+  bridge3884:
+    image: eclipse-mosquitto
+    ports:
+      - "3884:1883"
+    volumes:
+      - ./bridge:/mosquitto/config
+    restart: unless-stopped
+    user: 1000:1000
+    depends_on:
+      broker3883:
+        condition: service_started
+        restart: true
+
+
+#bridge
+#connection dyson-fan
+#address 10.0.0.248:1883
+#remote_clientid paho33135379815290
+#remote_username VS9-EU-KFA2511A
+#remote_password *****
+#bridge_protocol_version mqttv311
+#try_private false
+#notifications false
+#cleansession true
+#topic # both 0
+
 
 #services:
 #  mqtt-bridge:
