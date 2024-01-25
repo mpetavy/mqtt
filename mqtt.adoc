@@ -122,18 +122,27 @@ https://mosquitto.org/man/mosquitto-8.html
 
 == Samples
 
+=== Subscribe to all topics
+
+    mosquitto_sub -h localhost -t # -d
+
 === PUB/SUB without authentication bridge->broker
 
     mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld!
 
     mosquitto_sub -h localhost -t from-bridge/mqtt
 
-
 === PUB/SUB with authentication bridge->broker
 
     mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld! -u bridgeuser -P bridgepwd
 
     mosquitto_sub -h localhost -t from-bridge/mqtt -u brokeruser -P brokerpwd
+
+=== PUB/SUB with TLS and authentication bridge->broker
+
+    mosquitto_pub -h localhost -p 1884 --insecure --cafile tls/ca.crt -t mqtt -m HelloWorld! -u bridgeuser -P bridgepwd
+
+    mosquitto_sub -h localhost --insecure --cafile tls/ca.crt -t from-bridge/mqtt -u brokeruser -P brokerpwd
 
 
 
@@ -147,6 +156,7 @@ https://mosquitto.org/man/mosquitto-8.html
 == Links
 
 https://mosquitto.org/ +
-http://www.steves-internet-guide.com/mqtt-protocol-messages-overview/ +
 https://hackmd.io/@phdunimed/mqttbridging +
+http://www.steves-internet-guide.com/mqtt-protocol-messages-overview/ +
 http://www.steves-internet-guide.com/mqtt-username-password-example/ +
+http://www.steves-internet-guide.com/mosquitto_pub-sub-clients/ +
