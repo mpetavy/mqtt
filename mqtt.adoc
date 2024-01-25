@@ -110,6 +110,35 @@ https://mosquitto.org/man/mosquitto-8.html
 
 |===
 
+== Password file
+
+=== Create with initial user
+
+    mosquitto_passwd -c passwd bridgeuser
+
+=== Append user
+
+    mosquitto_passwd -c passwd bridgeuser
+
+== Samples
+
+=== PUB/SUB without authentication bridge->broker
+
+    mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld!
+
+    mosquitto_sub -h localhost -t from-bridge/mqtt
+
+
+=== PUB/SUB with authentication bridge->broker
+
+    mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld! -u bridgeuser -P bridgepwd
+
+    mosquitto_sub -h localhost -t from-bridge/mqtt -u brokeruser -P brokerpwd
+
+
+
+
+
 == Limitations
 
 * Windows 10+ and Windows Server 2019+ can only handle approximatly 8192 concurrent connections

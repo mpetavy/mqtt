@@ -7,6 +7,8 @@ services:
       - ./broker:/mosquitto/config
     restart: unless-stopped
     user: 1000:1000
+    secrets:
+      - broker-passwd
 
   broker2883:
     image: eclipse-mosquitto
@@ -16,6 +18,8 @@ services:
       - ./broker:/mosquitto/config
     restart: unless-stopped
     user: 1000:1000
+    secrets:
+      - broker-passwd
 
   broker3883:
     image: eclipse-mosquitto
@@ -25,6 +29,8 @@ services:
       - ./broker:/mosquitto/config
     restart: unless-stopped
     user: 1000:1000
+    secrets:
+      - broker-passwd
 
   bridge1884:
     image: eclipse-mosquitto
@@ -34,6 +40,8 @@ services:
       - ./bridge:/mosquitto/config
     restart: unless-stopped
     user: 1000:1000
+    secrets:
+      - bridge-passwd
     depends_on:
       broker1883:
         condition: service_started
@@ -47,6 +55,8 @@ services:
       - ./bridge:/mosquitto/config
     restart: unless-stopped
     user: 1000:1000
+    secrets:
+      - bridge-passwd
     depends_on:
       broker2883:
         condition: service_started
@@ -60,11 +70,18 @@ services:
       - ./bridge:/mosquitto/config
     restart: unless-stopped
     user: 1000:1000
+    secrets:
+      - bridge-passwd
     depends_on:
       broker3883:
         condition: service_started
         restart: true
 
+secrets:
+  broker-passwd:
+    file: broker/broker-passwd
+  bridge-passwd:
+    file: bridge/bridge-passwd
 
 #bridge
 #connection dyson-fan
