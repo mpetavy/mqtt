@@ -19,7 +19,7 @@ openssl x509 -req -in tls\bridge.csr -CA tls\ca.crt -CAkey tls\ca.key -CAcreates
 rem Generate private key for the server
 openssl genpkey -algorithm RSA -out tls\broker.key
 rem Generate a CSR for the server
-openssl req -new -key tls\broker.key -out tls\broker.csr -subj "/CN=bridge" -addext "subjectAltName=DNS:bridge"
+openssl req -new -key tls\broker.key -out tls\broker.csr -subj "/CN=broker" -addext "subjectAltName=DNS:broker"
 rem Sign the server CSR with the root CA
 openssl x509 -req -in tls\broker.csr -CA tls\ca.crt -CAkey tls\ca.key -CAcreateserial -out tls\broker.crt -days 365
 
@@ -30,9 +30,11 @@ rem Verify the server certificate against the root CA
 openssl verify -CAfile tls\ca.crt tls\broker.crt
 
 rem copy the certs
-copy tls\ca.* bridge
-copy tls\bridge.* bridge
+copy tls\ca.crt bridge
+copy tls\bridge.key bridge
+copy tls\bridge.crt bridge
 
 rem copy the certs
-copy tls\ca.* broker
-copy tls\broker.* broker
+copy tls\ca.crt broker
+copy tls\broker.key broker
+copy tls\broker.crt broker

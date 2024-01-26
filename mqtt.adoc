@@ -1,130 +1,108 @@
-// https://github.com/mutablelogic/go-mosquitto
+= MQTT broker setup in bridge mode
 
-= MQTT broker setup in bride mode
+== Description
 
-== Decription
-
-This is a description of a setup of 2 MQTT brokers in bridge mode. +
+This is a description of a setup of two MQTT brokers in bridge mode. +
 Bridge mode allows users to connect two or more Mosquitto brokers to share information with each other. +
 Choosen MQTT broker is the well known Eclipse Mosquitto MQTT broker https://mosquitto.org/
 
 == Requirements
 
 * Two MQTT broker
-* TLS enabled communication
+* TLS encrypted communication Client -> Bridge -> Broker -> Client
 * Broker Authentication
 * Bi-directional communication
+* Topic mapping
 
-== MQTT broker
+== Overview available MQTT brokers
 
-https://mqtt.org/software/
+https://en.wikipedia.org/wiki/Comparison_of_MQTT_implementations +
 
-[cols="2,10"]
+== Google survey
+
+[cols="4,10a"]
 |===
 
-|Eclipse Mosquitto|https://mosquitto.org/
-|EMQX|https://www.emqx.com/en/products/emqx
-|===
+|What is the most used MQTT broker?
+|Eclipse Mosquitto +
+The most popular open source MQTT brokers are Eclipse Mosquitto and IBM's ActiveMQ.
 
+|What is the largest MQTT broker?
+|EMQ X is currently the most scalable MQTT broker for IoT applications. +
+It processes millions of MQTT messages in a second with sub-millisecond latency and allows messaging among more than 100 million clients within a single cluster.
+
+|How do I choose a MQTT broker?
+|Choose the MQTT protocol that can scale following your requirements without sacrificing performance or reliability. +
+Network security is a critical consideration when dealing with IoT devices, and MQTT brokers should have robust IoT security features, such as encryption, authentication, and access control.
+|===
 
 == Eclipse Mosquitto
 
-[cols="2,10"]
+Quote from https://moquitto.org:
+
+    Eclipse Mosquitto is an open source (EPL/EDL licensed) message broker that implements the MQTT protocol versions 5.0, 3.1.1 and 3.1. Mosquitto is lightweight and is suitable for use on all devices from low power single board computers to full servers.
+    The MQTT protocol provides a lightweight method of carrying out messaging using a publish/subscribe model. This makes it suitable for Internet of Things messaging such as with low power sensors or mobile devices such as phones, embedded computers or microcontrollers.
+    The Mosquitto project also provides a C library for implementing MQTT clients, and the very popular mosquitto_pub and mosquitto_sub command line MQTT clients.
+    Mosquitto is part of the Eclipse Foundation, and is an iot.eclipse.org project.
+    The development is driven by Cedalo.
+
+== Eclipse Mosquitto features
+
+* Lightweight
+* OS supported
+    ** Linux
+    ** Windows
+    ** MacOS
+* Protocols supported:
+    ** MQTT
+    ** MQTT over TLS
+    ** MQTT over mTLS (with client certificate)
+    ** MQTT over WebSockets
+    ** MQTT over WebSockets with TLS
+* Authentication
+    ** anonymous (no authentication)
+    ** username/password (per broker)
+    ** dynamic security: role based/ACL (publishClientSend, publishClientReceive, subscribe, and unsubscribe
+    ** custom security: https://github.com/iegomez/mosquitto-go-auth
+        *** Files
+        *** PostgreSQL
+        *** JWT (with local DB or remote API)
+        *** HTTP
+        *** Redis
+        *** Mysql
+        *** SQLite3
+        *** MongoDB
+        *** Custom (experimental)
+        *** gRPC
+        *** Javascript interpreter
+
+== Demo description
+
+[cols="4,10a"]
 |===
 
-|Reread configuration|kill -1 <pid>
-|===
+|MQTT protocol version
+|mqttv311 (default))
+
+|TLS protocol version
+|tlsv1.2 and tlsv1.3 (default)
 
 
-== Glossar
 
-https://mosquitto.org/man/mosquitto-8.html
 
-[cols="2,10"]
-|===
+|compose.yml
+|Docker compose configuration file
 
-|Enhanced authentication
-|Basic MQTT authentication uses username/password checks. Enhanced authentication allows different authentication schemes to be integrated into MQTT, and even those schemes with multiple step processes. Clients request a particular type of authentication and if the broker is configured for that scheme the authentication continues. Mosquitto supports enhanced authentication through plugins.
+|start-bridge
+|Starts the docker compose demo setup
 
-|Error handling
-|Most MQTT packets now have the concept of a reason code which indicates success or failure, and what the failure was. Mosquitto provides full support for reason codes, but does not make use of the reason string feature which can be used to provide a human readable error string to explain the reason code.
+|stop-bridge
+|Stops the docker compose demo setup
 
-|Flow control
-|The number of "in flight" messages for QoS 1 and QoS 2 can be controlled by both the client and the broker.
-
-|Request / response
-|MQTT v5.0 adds a request/response pattern that allows a client to publish a message and instruct the subscribers of that message where to publish a response.
-
-|Server redirection
-|Server redirection is the concept of telling a client to connect to a different MQTT broker, either on CONNECT or with a broker initiated DISCONNECT. Mosquitto does not currently make use of this feature.
-
-|Shared subscriptions
-|When multiple clients subscribe to the same shared subscription, only one client out of the group will receive each message which allows for distributing work loads.
-|===
-
-== Basic MQTT configuration
-
-    listener 1883
-    allow_anonymous true
-
-== Bridge MQTT configuration
-
-    listener 1883
-    allow_anonymous true
-
-== Comparison of MQQT brokers
-
-[cols="1,1,1"]
-|===
-||Mosquitto|HiveMQ
-
-|Version 5
-|*
-|*
-
-|Version 3.11
-|*
-|*
-
-|Version 3.1
-|*
-|*
-
-|Server redirection
-|*
-|*
-
-|Shared subscription
-|*
-|*
-
-|ANONYMOUS Authentication
-|*
-|*
-
-|Custom Authentication
-|*
-|*
-|https://mosquitto.org/documentation/authentication-methods/
-|https://mosquitto.org/documentation/authentication-methods/
+|create-certs
+|Creates a custom ROOT CA certificate and certificates for bridge and broker container
 
 |===
-
-== TLS/SSL Certificate
-
-=== Create ROOT CA
-    # create a key pair for the CA
-    openssl genrsa -des3 -out ca.key 2048
-
-    # Create a certificate for the CA
-    openssl req -new -x509 -days 1826 -key ca.key -out ca.crt
-
-=== Create bridge/broker server key pair
-
-    # create a server key pair that will be used by the bridge/broker
-    openssl genrsa -out server.key 2048
-
-
 
 == Password file
 
@@ -140,40 +118,34 @@ https://mosquitto.org/man/mosquitto-8.html
 
 === Subscribe to all topics
 
-    mosquitto_sub -h localhost -t # -d
+    mosquitto_sub -h localhost -p 1883 -t #
 
 === PUB/SUB without authentication bridge->broker
 
-    mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld!
+    mosquitto_sub -h localhost -p 1883 -t from-bridge/mqtt
 
-    mosquitto_sub -h localhost -t from-bridge/mqtt
+    mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld!
 
 === PUB/SUB with authentication bridge->broker
 
-    mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld! -u bridgeuser -P bridgepwd
+    mosquitto_sub -h localhost -p 1883 -t from-bridge/mqtt -u brokeruser -P brokerpwd
 
-    mosquitto_sub -h localhost -t from-bridge/mqtt -u brokeruser -P brokerpwd
+    mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld! -u bridgeuser -P bridgepwd
 
 === PUB/SUB with TLS and authentication bridge->broker
 
-    mosquitto_pub -h localhost -p 1884 --insecure --cafile tls/ca.crt -t mqtt -m HelloWorld! -u bridgeuser -P bridgepwd
+    mosquitto_sub -h localhost -p 1883 -t from-bridge/mqtt -u brokeruser -P brokerpwd --cafile broker\ca.crt --insecure
 
-    mosquitto_sub -h localhost --insecure --cafile tls/ca.crt -t from-bridge/mqtt -u brokeruser -P brokerpwd
-
-
-
-
-
-== Limitations
-
-* Windows 10+ and Windows Server 2019+ can only handle approximatly 8192 concurrent connections
-*
+    mosquitto_pub -h localhost -p 1884 -t mqtt -m "it works!" -u bridgeuser -P bridgepwd --cafile bridge\ca.crt --insecure
 
 == Links
 
 https://mosquitto.org/ +
-https://hackmd.io/@phdunimed/mqttbridging +
+https://mosquitto.org/man/mosquitto-conf-5.html +
 http://www.steves-internet-guide.com/mqtt-protocol-messages-overview/ +
 http://www.steves-internet-guide.com/mqtt-username-password-example/ +
 http://www.steves-internet-guide.com/mosquitto_pub-sub-clients/ +
 http://www.steves-internet-guide.com/ssl-certificates-explained/ +
+http://www.steves-internet-guide.com/mosquitto-bridge-encryption/ +
+http://www.steves-internet-guide.com/mossquitto-conf-file/ +
+https://hackmd.io/@phdunimed/mqttbridging +
