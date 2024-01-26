@@ -110,6 +110,22 @@ https://mosquitto.org/man/mosquitto-8.html
 
 |===
 
+== TLS/SSL Certificate
+
+=== Create ROOT CA
+    # create a key pair for the CA
+    openssl genrsa -des3 -out ca.key 2048
+
+    # Create a certificate for the CA
+    openssl req -new -x509 -days 1826 -key ca.key -out ca.crt
+
+=== Create bridge/broker server key pair
+
+    # create a server key pair that will be used by the bridge/broker
+    openssl genrsa -out server.key 2048
+
+
+
 == Password file
 
 === Create with initial user
@@ -160,3 +176,4 @@ https://hackmd.io/@phdunimed/mqttbridging +
 http://www.steves-internet-guide.com/mqtt-protocol-messages-overview/ +
 http://www.steves-internet-guide.com/mqtt-username-password-example/ +
 http://www.steves-internet-guide.com/mosquitto_pub-sub-clients/ +
+http://www.steves-internet-guide.com/ssl-certificates-explained/ +
