@@ -106,13 +106,25 @@ Quote from https://moquitto.org:
 
 == Password file
 
-=== Create with initial user
+=== Create passwd with an initial user
 
     mosquitto_passwd -c passwd bridgeuser
 
-=== Append user
+=== Append an user
 
-    mosquitto_passwd -c passwd bridgeuser
+    mosquitto_passwd passwd bridgeuser
+
+== Run only broker
+
+    run-broker.sh
+    mosquitto_sub -h broker -p 1883 --cafile tls/ca.crt -t mqtt -u brokeruser -P brokerpwd
+    mosquitto_pub -h broker -p 1883 --cafile tls/ca.crt -t mqtt -m Hallo -u brokeruser -P brokerpwd
+
+== Run bridge and broker
+
+    run-bridge-and-broker.sh
+    mosquitto_sub -h broker -p 1883 --cafile tls/ca.crt -t mqtt -u brokeruser -P brokerpwd
+    mosquitto_pub -h bridge -p 1884 --cafile tls/ca.crt -t mqtt -m Hallo -u bridgeuser -P bridgepwd
 
 == Samples
 
@@ -122,21 +134,21 @@ Quote from https://moquitto.org:
 
 === PUB/SUB without authentication bridge->broker
 
-    mosquitto_sub -h localhost -p 1883 -t from-bridge/mqtt
+    mosquitto_sub -h localhost -p 1883 --cafile tls/ca.crt -t from-bridge/mqtt
 
-    mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld!
+    mosquitto_pub -h localhost -p 1884 --cafile tls/ca.crt -t mqtt -m HelloWorld!
 
 === PUB/SUB with authentication bridge->broker
 
-    mosquitto_sub -h localhost -p 1883 -t from-bridge/mqtt -u brokeruser -P brokerpwd
+    mosquitto_sub -h localhost -p 1883 --cafile tls/ca.crt -t from-bridge/mqtt -u brokeruser -P brokerpwd
 
-    mosquitto_pub -h localhost -p 1884 -t mqtt -m HelloWorld! -u bridgeuser -P bridgepwd
+    mosquitto_pub -h localhost -p 1884 --cafile tls/ca.crt -t mqtt -m HelloWorld! -u bridgeuser -P bridgepwd
 
 === PUB/SUB with TLS and authentication bridge->broker
 
-    mosquitto_sub -h localhost -p 1883 -t from-bridge/mqtt -u brokeruser -P brokerpwd --cafile broker\ca.crt --insecure
+    mosquitto_sub -h localhost -p 1883 --cafile tls/ca.crt -t from-bridge/mqtt -u brokeruser -P brokerpwd --cafile broker\ca.crt --insecure
 
-    mosquitto_pub -h localhost -p 1884 -t mqtt -m "it works!" -u bridgeuser -P bridgepwd --cafile bridge\ca.crt --insecure
+    mosquitto_pub -h localhost -p 1884 --cafile tls/ca.crt -t mqtt -m "it works!" -u bridgeuser -P bridgepwd --cafile bridge\ca.crt --insecure
 
 == Links
 
