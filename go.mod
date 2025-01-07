@@ -7,7 +7,7 @@ toolchain go1.23.2
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/google/uuid v1.6.0
-	github.com/mpetavy/common v1.9.50
+	github.com/mpetavy/common v1.9.51
 )
 
 require (
